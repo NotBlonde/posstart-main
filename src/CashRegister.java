@@ -58,10 +58,7 @@ public class CashRegister implements ActionListener {
 
     }
 
-    private void buttonClick(){
-        boolean onOff = true;
-
-    }
+    
 
     private void createAddArea(){
         inputProductName = new JTextArea();
@@ -90,10 +87,19 @@ public class CashRegister implements ActionListener {
         payButton.setBounds(480,640,70,50);
         payButton.setFont(new Font("Arial Black", Font.PLAIN, 14));
         frame.add(payButton);
-        //payButton.addActionListener(this);
-        //if (payButton.equals(true)){
 
-        //}
+        final int[] counter = {0};
+        kaffeButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                // Öka räknarens värde med 1 vid varje klick
+                counter[0]++;
+                // Uppdatera etiketten med det nya värdet
+                label.setText("Värde: " + counter[0]);
+            }
+        });
+        
+        
 
 
     }
@@ -146,9 +152,17 @@ public class CashRegister implements ActionListener {
 
         frame.add(scroll);    
     }
+    
 
+
+
+        
+    
     public void run(){
-        receipt.append("                     STEFANS SUPERSHOP\n");
+        payButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                receipt.append("                     STEFANS SUPERSHOP\n");
         receipt.append("----------------------------------------------------\n");
         receipt.append("\n");
         receipt.append("Kvittonummer: 122        Datum: 2024-09-01 13:00:21\n");
@@ -158,6 +172,9 @@ public class CashRegister implements ActionListener {
         receipt.append("Total                                        ------\n");
         receipt.append("                                             306.00\n");
         receipt.append("TACK FÖR DITT KÖP\n");
+            }
+        });
+        
 
     }            
 
