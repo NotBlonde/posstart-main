@@ -2,11 +2,16 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.BufferedWriter;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.util.HashMap;
 import java.util.Map;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JTextArea;
 
 public class CashRegister {
@@ -20,34 +25,34 @@ public class CashRegister {
 
     private String currentProductName = "";
     private int currentProductCount = 0;
-    private Map<String, Integer> purchasedProducts;  // Håller koll på produkter och antal
+    private Map<String, Integer> purchasedProducts;  // Tracks purchased products and their quantities
 
     public CashRegister() {
-        // Skapar huvudramen (fönstret)
+        // Set up the frame
         frame = new JFrame("IOT24 POS");
         frame.getContentPane().setBackground(Color.BLACK);
         frame.setSize(1000, 800);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLayout(null);
 
-        // Skapar kvittoutskrift
+        // Set up the receipt area
         receipt = new Receipt();
         frame.add(receipt.getScrollPane());
 
-        // Skapar snabbvalsknappar och skickar referensen till CashRegister (this)
-        quickButtonsPanel = new ProductButton(receipt, this);  // Skicka referens till detta CashRegister-objekt
+        // Set up quick buttons panel
+        quickButtonsPanel = new ProductButton(receipt, this);
         frame.add(quickButtonsPanel.getPanel());
 
-        // Initierar listan över köpta produkter
+        // Initialize purchased products map
         purchasedProducts = new HashMap<>();
 
-        // Skapar manuell input och betalning
+        // Set up input area and payment button
         createAddArea();
 
         frame.setVisible(true);
     }
 
-    // Manuell input för produktnamn och antal
+    // Manually input product name and quantity
     private void createAddArea() {
         inputProductName = new JTextArea();
         inputProductName.setBounds(20, 650, 300, 30);
@@ -55,7 +60,7 @@ public class CashRegister {
         inputProductName.setEditable(false);
         frame.add(inputProductName);
 
-        JLabel label = new JLabel("Antal");
+        JLabel label = new JLabel("Quantity");
         label.setBounds(340, 625, 300, 30);
         label.setForeground(Color.WHITE);
         frame.add(label);
@@ -83,51 +88,63 @@ public class CashRegister {
         payButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                endPayment();
+                generateReceiptAndSaveToFile();
             }
         });
         frame.add(payButton);
     }
 
-    // Metod som lägger till produkt och antal till kvittot
+    // Add products to receipt and track them
     public void addProductToReceipt() {
-      Product product = new Product(currentProductName, currentProductCount);
         if (!currentProductName.isEmpty() && currentProductCount > 0) {
-            // Uppdatera köpta produkter
-            purchasedProducts.put(currentProductName, 
-                purchasedProducts.getOrDefault(currentProductName, 0) + currentProductCount);
+            purchasedProducts.put(currentProductName,
+                    purchasedProducts.getOrDefault(currentProductName, 0) + currentProductCount);
 
-            // Lägg till i kvittot
-            receipt.addToReceipt(currentProductName + " " + currentProductCount + " st " + getProductPrice(currentProductName ) * currentProductCount + "kr");
+            receipt.addToReceipt(currentProductName + " " + currentProductCount + " st " +
+                    getProductPrice(currentProductName) * currentProductCount + " kr");
             clearProductSelection();
         }
     }
 
-    // Metod som skriver ut kvittosammanfattning när betalningen avslutas
-    public void endPayment() {
+    // Generates receipt summary and saves to file
+    public void generateReceiptAndSaveToFile() {
         double totalPrice = 0.0;
-        receipt.addToReceipt("\n-------- KVITTOSAMMANFATTNING --------\n");
+        StringBuilder receiptSummary = new StringBuilder();
+        
+        receiptSummary.append("\n-------- RECEIPT SUMMARY --------\n");
 
-        // Iterera genom alla köpta produkter och skriv ut varje produkts totalpris
         for (Map.Entry<String, Integer> entry : purchasedProducts.entrySet()) {
             String productName = entry.getKey();
             int quantity = entry.getValue();
             double productPrice = getProductPrice(productName);
             double totalProductPrice = productPrice * quantity;
 
-            receipt.addToReceipt(productName + " " + quantity + " st x " + productPrice + " kr = " + totalProductPrice + " kr");
+            receiptSummary.append(String.format("%-20s %3d x %-7.2f = %-8.2f kr\n", productName, quantity, productPrice, totalProductPrice));
             totalPrice += totalProductPrice;
         }
 
-        receipt.addToReceipt("\n--------------------------------------");
-        receipt.addToReceipt("TOTALT PRIS: " + totalPrice + " kr");
-        receipt.addToReceipt("TACK FÖR DITT KÖP!\n");
+        receiptSummary.append("\n----------------------------------\n");
+        receiptSummary.append(String.format("TOTAL PRICE: %33.2f kr\n", totalPrice));
+        receiptSummary.append("**********************************\n");
+        receiptSummary.append("     THANK YOU FOR YOUR PURCHASE!     \n");
+        receiptSummary.append("**********************************\n");
 
-        // Rensa produktlistan efter betalningen
-        purchasedProducts.clear();
+        String receiptString = receiptSummary.toString();
+        receipt.addToReceipt(receiptString);  // Add to the GUI receipt area
+
+        // Write to the file
+        String filePath = "C:\\Users\\Leahb\\_Dev\\posstart-main\\src\\output.txt";
+        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(filePath), "UTF-8"))) {
+            writer.write(receiptString);
+            JOptionPane.showMessageDialog(null, "File has been saved successfully!");
+        } catch (IOException ioException) {
+            ioException.printStackTrace();
+        }
+
+        purchasedProducts.clear();  // Clear product list after saving
     }
 
-    // Returnerar priset för en produkt (hårdkodad för enkelhet)
+    // Returns the price of the product (hardcoded)
     private double getProductPrice(String productName) {
         switch (productName) {
             case "Kaffe":
@@ -143,11 +160,11 @@ public class CashRegister {
             case "Daim":
                 return 10.00;
             default:
-                return 0.0;  // Om produkten inte finns i listan
+                return 0.0;  // Product not found
         }
     }
 
-    // Uppdaterar produktnamn och antal när en knapp trycks
+    // Update product name and count
     public void updateProductSelection(String productName) {
         if (currentProductName.equals(productName)) {
             currentProductCount++;
@@ -159,7 +176,7 @@ public class CashRegister {
         inputCount.setText(String.valueOf(currentProductCount));
     }
 
-    // Rensar produktval efter att produkten lagts till kvittot
+    // Clear product selection after adding to receipt
     private void clearProductSelection() {
         currentProductName = "";
         currentProductCount = 0;
